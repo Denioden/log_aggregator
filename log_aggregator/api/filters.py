@@ -1,6 +1,6 @@
 from django_filters import rest_framework as filters
 from log_access_apache.models import Log
-
+from django_filters import widgets
 
 class LogFilter(filters.FilterSet):
 
