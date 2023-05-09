@@ -9,7 +9,7 @@ def parser():
     files = iglob(settings.PARSER_LOG_PATH)
 
     for file in files:
-        with open(file, "r", encoding='UTF-8') as fp:
+        with open(file, "r") as fp:
 
             logs = fp.readlines()
             file_last_line = (logs[-1])
