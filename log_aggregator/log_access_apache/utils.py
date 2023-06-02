@@ -12,19 +12,19 @@ def file_vailed(file):
     если файл соответствует формату, тогда читает его,
     и проверяет.
 
-    Если у файла новое имя сиcтема распознаёт его как новый файл,
-    запишет данные и сообщит "Данные файла {file_name} записываются".
+    Если у файла новое имя, сиcтема распознаёт его как новый файл, запишет
+    данные и сообщит "Данные файла {file_name} записываются".
 
-    Если у файла имя которое уже записано в базу, но новые данные
-    (новая первая строка), система сообщит -
-    "Файл с именем {file_name}, уже записан в базу."
+    Если у файла имя, которое уже записано в базу, но новые данные
+    (новая первая строка), система обновит данные о файле, запишет
+    новые данные и сообщит - "Запись файла {file_name} обновлена"
 
     Если в ранее записанный файл добавить новые строки система распознает это,
-    обновит данные о файле, запишет новые данные и сообщит -
-    "Запись файла {file_name} обновлена"
+    обновит данные о файле, запишет новые данные и сообщит
+    - "Запись файла {file_name} обновлена"
 
     Если начать записывать файл, который был записан ранее,
-    система сообщит - "Данные файла {file_name} уже были записаны"
+    система сообщит - "Данные файла {file_name} были записаны ранее"
     '''
 
     format_file = magic.from_file(file, mime=True)
@@ -39,40 +39,39 @@ def file_vailed(file):
         number_entries = f.tell()
         file_log, create = LogFile.objects.get_or_create(file_path=file_path)
         new_line = number_entries - file_log.last_position
-      
-        # Если хотят записать файл со старым именем, но новыми данными.
-        if not create and file_log.first_line != file_contents[0]:
-            return f'Файл с именем {file_name}, уже записан в базу.'
+
+        # Если в ранее записанном файле полностью изменили данные.
+        if (not create and file_log.first_line != file_contents[0]) or create:
+            file_log.last_line = file_contents[-1]
+            file_log.first_line = file_contents[0]
+            file_log.last_position = number_entries
+            file_log.save()
+            if not create:
+                print(f'Запись файла {file_name} обновлена')
+            else:
+                print(f'Данные файла {file_name} записываются')
+            return file_contents
 
         # Если в ранее записанный файл добавили информацию,
         # и хотят её записать.
-        if not create and (new_line) > 0:
+        if not create and (new_line > 0):
             f.seek(file_log.last_position, 0)
             file_contents = f.readlines()
             file_log.last_line = file_contents[-1]
             file_log.last_position = number_entries
             file_log.save()
-            print(f'Запись файла {file_name} обнавлёна')
+            print(f'Запись файла {file_name} обновлена')
             return file_contents
 
-        # Если хотят записать новый файл
-        if create:
-            file_log.last_line = file_contents[-1]
-            file_log.first_line = file_contents[0]
-            file_log.last_position = number_entries
-            file_log.save()
-            print(f'Данные файла {file_name} записываются')
-            return file_contents
-
-        # Если хотят записать ранее записанный файл
+        # Если хотят записать, ранее записанный файл, со старыми данными.
         if not create and (file_log.last_line == file_contents[-1]
                            or file_log.first_line == file_contents[0]):
-            return f'Данные файла {file_name} уже были записаны'
+            return f'Данные файла {file_name} были записаны ранее'
 
 
 def log_creat(file_contents):
     """
-    Функция log_creat принимает на фход список строк, каждая строка - это лог.
+    Функция log_creat принимает на вход список строк, каждая строка - это лог.
     В цикле проходим по списку.
     Строка преобразуется в запись журнала согласно формату.
     Создаётся объект класса Log и добавляется в список log_list.
@@ -97,7 +96,7 @@ def log_creat(file_contents):
             log_list.append(instance_log)
 
         except errors.InvalidEntryError:
-            print(f'Лог {log} не соответствует формату.')
+            print(f'Лог {log} не был записан, так как не соответствует формату.')
 
         except errors.InvalidDirectiveError:
             print('Недопустимая или неправильно сформированная директива')
