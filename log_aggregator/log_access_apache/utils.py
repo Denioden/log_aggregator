@@ -1,45 +1,121 @@
 from .models import Log, LogFile
 from glob import iglob
 from django.conf import settings
-from apachelogs import LogParser, COMBINED
+from apachelogs import LogParser, COMBINED, errors
+import magic
+
+
+def file_vailed(file):
+    '''
+    Функции fail_vailed принимает на вход файл.
+    Проверяет его на соответствие формата text/plain,
+    если файл соответствует формату, тогда читает его,
+    и проверяет.
+
+    Если у файла новое имя сиcтема распознаёт его как новый файл,
+    запишет данные и сообщит "Данные файла {file_name} записываются".
+
+    Если у файла имя которое уже записано в базу, но новые данные
+    (новая первая строка), система сообщит -
+    "Файл с именем {file_name}, уже записан в базу."
+
+    Если в ранее записанный файл добавить новые строки система распознает это,
+    обновит данные о файле, запишет новые данные и сообщит -
+    "Запись файла {file_name} обновлена"
+
+    Если начать записывать файл, который был записан ранее,
+    система сообщит - "Данные файла {file_name} уже были записаны"
+    '''
+
+    format_file = magic.from_file(file, mime=True)
+    file_name = file.split('/')[-1]
+
+    if format_file != 'text/plain':
+        return f'Файл {file_name} не соответствует формату text/plain'
+
+    with open(file, "r") as f:
+        file_path = f.name
+        file_contents = f.readlines()
+        number_entries = f.tell()
+        file_log, create = LogFile.objects.get_or_create(file_path=file_path)
+        new_line = number_entries - file_log.last_position
+      
+        # Если хотят записать файл со старым именем, но новыми данными.
+        if not create and file_log.first_line != file_contents[0]:
+            return f'Файл с именем {file_name}, уже записан в базу.'
+
+        # Если в ранее записанный файл добавили информацию,
+        # и хотят её записать.
+        if not create and (new_line) > 0:
+            f.seek(file_log.last_position, 0)
+            file_contents = f.readlines()
+            file_log.last_line = file_contents[-1]
+            file_log.last_position = number_entries
+            file_log.save()
+            print(f'Запись файла {file_name} обнавлёна')
+            return file_contents
+
+        # Если хотят записать новый файл
+        if create:
+            file_log.last_line = file_contents[-1]
+            file_log.first_line = file_contents[0]
+            file_log.last_position = number_entries
+            file_log.save()
+            print(f'Данные файла {file_name} записываются')
+            return file_contents
+
+        # Если хотят записать ранее записанный файл
+        if not create and (file_log.last_line == file_contents[-1]
+                           or file_log.first_line == file_contents[0]):
+            return f'Данные файла {file_name} уже были записаны'
+
+
+def log_creat(file_contents):
+    """
+    Функция log_creat принимает на фход список строк, каждая строка - это лог.
+    В цикле проходим по списку.
+    Строка преобразуется в запись журнала согласно формату.
+    Создаётся объект класса Log и добавляется в список log_list.
+    После завершения цикла список log_list записывается в базу.
+    """
+    parser = LogParser(COMBINED)
+    log_list = []
+    for log in file_contents:
+        try:
+            entry = parser.parse(log)
+            instance_log = Log(
+                        remote_host=entry.remote_host,
+                        remote_logname=entry.remote_logname,
+                        remote_user=entry.remote_user,
+                        request_time=entry.request_time,
+                        request_line=entry.request_line,
+                        final_status=entry.final_status,
+                        bytes_sent=entry.bytes_sent,
+                        referer=entry.headers_in["Referer"],
+                        user_agent=entry.headers_in["User-Agent"],
+                    )
+            log_list.append(instance_log)
+
+        except errors.InvalidEntryError:
+            print(f'Лог {log} не соответствует формату.')
+
+        except errors.InvalidDirectiveError:
+            print('Недопустимая или неправильно сформированная директива')
+
+        except errors.UnknownDirectiveError:
+            print('Неизвестная или неподдерживаемая директива')
+
+    Log.objects.bulk_create(log_list)
+    print('Запись файла прошла успешно')
 
 
 def parser():
-    parser = LogParser(COMBINED)
     files = iglob(settings.PARSER_LOG_PATH)
 
     for file in files:
-        with open(file, "r") as fp:
-
-            logs = fp.readlines()
-            file_last_line = (logs[-1])
-            is_present = LogFile.objects.filter(
-                last_line=file_last_line
-            ).exists()
-
-            if is_present:
-                continue
-
-            else:
-                log_file = LogFile(
-                    file_path=fp.name,
-                    last_line=logs[-1],
-                )
-                LogFile.save(log_file)
-
-                log_list = []
-                for log in logs:
-                    entry = parser.parse(log)
-                    instance_log = Log(
-                                remote_host=entry.remote_host,
-                                remote_logname=entry.remote_logname,
-                                remote_user=entry.remote_user,
-                                request_time=entry.request_time,
-                                request_line=entry.request_line,
-                                final_status=entry.final_status,
-                                bytes_sent=entry.bytes_sent,
-                                referer=entry.headers_in["Referer"],
-                                user_agent=entry.headers_in["User-Agent"],
-                            )
-                    log_list.append(instance_log)
-                Log.objects.bulk_create(log_list)
+        file_contents = file_vailed(file)
+        if type(file_contents) != list:
+            print(file_contents)
+            continue
+        else:
+            log_creat(file_contents)

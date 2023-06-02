@@ -6,4 +6,5 @@ sqlparse==0.3.1
 apachelogs==0.6.0
 django-crontab==0.7.1
 python-dotenv==0.19.2
-drf-yasg==1.21.5
+python-magic==0.4.27
+drf-spectacular==0.26.2

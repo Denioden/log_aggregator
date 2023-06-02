@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'django_filters',
     'django_crontab',
-    'drf_yasg',
+    'drf_spectacular',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -82,6 +82,7 @@ WSGI_APPLICATION = 'log_aggregator.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
+
 DATABASES = {
     'default': {
         'ENGINE': os.getenv('DB_ENGINE'),
@@ -92,7 +93,6 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT')
     }
 }
-
 
 
 # Password validation
@@ -133,7 +133,7 @@ USE_L10N = True
 
 STATIC_URL = '/static/'
 
-PARSER_LOG_PATH = os.path.join(BASE_DIR, 'test_logs/apache_logs*')
+PARSER_LOG_PATH = os.path.join(BASE_DIR, 'test_logs/*')
 
 
 REST_FRAMEWORK = {
@@ -145,19 +145,16 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Aggregator Apache Access Logs API',
+    'VERSION': '1.1',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 CRONJOBS = [
     ('*/5 * * * *', 'log_access_apache.utils.parser')
 ]
-
-SWAGGER_SETTINGS = {
-   'SECURITY_DEFINITIONS': {
-      'Bearer': {
-            'type': 'apiKey',
-            'name': 'Authorization',
-            'in': 'header'
-      }
-   }
-}

@@ -1,0 +1,155 @@
+openapi: 3.0.3
+info:
+  title: Aggregator Apache Access Logs API
+  version: 1.0.0
+paths:
+  /api/api-token-auth/:
+    post:
+      operationId: api_token_auth_create
+      tags:
+      - api-token-auth
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AuthToken'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AuthToken'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthToken'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+          description: ''
+  /api/logs/:
+    get:
+      operationId: logs_list
+      description: Описание
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - in: query
+        name: remote_host
+        schema:
+          type: string
+      - in: query
+        name: request_time_after
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: request_time_before
+        schema:
+          type: string
+          format: date-time
+      tags:
+      - logs
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLogList'
+          description: ''
+components:
+  schemas:
+    AuthToken:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+        token:
+          type: string
+          readOnly: true
+      required:
+      - password
+      - token
+      - username
+    Log:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        remote_host:
+          type: string
+        remote_logname:
+          type: string
+          nullable: true
+          maxLength: 100
+        remote_user:
+          type: string
+          nullable: true
+          maxLength: 100
+        request_time:
+          type: string
+          format: date-time
+        request_line:
+          type: string
+          nullable: true
+        final_status:
+          type: integer
+          nullable: true
+        bytes_sent:
+          type: integer
+          nullable: true
+        referer:
+          type: string
+          nullable: true
+        user_agent:
+          type: string
+          nullable: true
+      required:
+      - id
+      - remote_host
+      - request_time
+    PaginatedLogList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Log'
+  securitySchemes:
+    tokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Token-based authentication with required prefix "Token"

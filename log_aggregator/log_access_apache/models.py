@@ -61,8 +61,12 @@ class LogFile(models.Model):
     date_time = models.DateTimeField(auto_now=True)
 
     file_path = models.TextField()
+    
+    first_line = models.TextField(blank=True)
 
     last_line = models.TextField(blank=True)
+
+    last_position = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['date_time']
