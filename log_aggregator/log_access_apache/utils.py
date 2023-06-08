@@ -15,7 +15,7 @@ def file_vailed(file):
     Если у файла новое имя, сиcтема распознаёт его как новый файл,
     запишет данные и сообщит "Данные файла {file_name} записываются".
 
-    Если у файла имя, которое уже записано в базу, но новые данные
+    Если у файла имя которое уже записано в базу, но новые данные
     (новая первая строка), система обновит данные о файле, запишет
     новые данные и сообщит - "Запись файла {file_name} обновлена"
 
@@ -23,8 +23,9 @@ def file_vailed(file):
     распознает это, обновит данные о файле, запишет новые данные
     и сообщит - "Запись файла {file_name} обновлена"
 
-    Если начать записывать файл, который был записан ранее, без изменения
-    данных система сообщит - "Данные файла {file_name} были записаны ранее"
+    Если начать записывать файл, который был записан ранее, без
+    изменения данных, система сообщит - "Данные файла {file_name}
+    уже были записаны"
     '''
 
     format_file = magic.from_file(file, mime=True)
@@ -40,7 +41,6 @@ def file_vailed(file):
         file_log, create = LogFile.objects.get_or_create(file_path=file_path)
         new_line = number_entries - file_log.last_position
 
-        # Если в ранее записанном файле полностью изменили данные.
         if (not create and file_log.first_line != file_contents[0]) or create:
             file_log.last_line = file_contents[-1]
             file_log.first_line = file_contents[0]
@@ -52,8 +52,6 @@ def file_vailed(file):
                 print(f'Данные файла {file_name} записываются')
             return file_contents
 
-        # Если в ранее записанный файл добавили информацию,
-        # и хотят её записать.
         if not create and (new_line > 0):
             f.seek(file_log.last_position, 0)
             file_contents = f.readlines()
@@ -63,7 +61,6 @@ def file_vailed(file):
             print(f'Запись файла {file_name} обновлена')
             return file_contents
 
-        # Если хотят записать, ранее записанный файл, со старыми данными.
         if not create and (file_log.last_line == file_contents[-1]
                            or file_log.first_line == file_contents[0]):
             return f'Данные файла {file_name} были записаны ранее'
@@ -96,7 +93,10 @@ def log_creat(file_contents):
             log_list.append(instance_log)
 
         except errors.InvalidEntryError:
-            print(f'Лог {log} не был записан, так как не соответствует формату.')
+            print(
+                f'Лог {log} не был записан,'
+                f'так как не соответствует формату.'
+            )
 
         except errors.InvalidDirectiveError:
             print('Недопустимая или неправильно сформированная директива')

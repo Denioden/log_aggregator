@@ -85,6 +85,14 @@ WSGI_APPLICATION = 'log_aggregator.wsgi.application'
 
 DATABASES = {
     'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    }
+}
+
+'''
+DATABASES = {
+    'default': {
         'ENGINE': os.getenv('DB_ENGINE'),
         'NAME': os.getenv('DB_NAME'),
         'USER': os.getenv('POSTGRES_USER'),
@@ -93,7 +101,7 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT')
     }
 }
-
+'''
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
@@ -125,7 +133,7 @@ USE_I18N = True
 
 USE_L10N = True
 
-# USE_TZ = True
+USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
@@ -155,6 +163,7 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
+
 CRONJOBS = [
-    ('*/5 * * * *', 'log_access_apache.utils.parser')
+    ('*/1 * * * *', 'log_access_apache.utils.parser')
 ]
